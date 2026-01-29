@@ -1,0 +1,7 @@
+# local
+.temp
+
+# moon
+.moon/cache
+.moon/docker
+

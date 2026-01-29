@@ -1,0 +1,9 @@
+project:
+  name: notstress/server
+
+language: go
+
+tasks:
+  build:
+    type: build 
+    command: go build -o server server/cmd/server
