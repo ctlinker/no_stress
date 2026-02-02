@@ -1,9 +1,31 @@
 project:
-  name: notstress/server
+  name: no-stress/server
+  description: backend server for the notress client apps
 
 language: go
 
 tasks:
+
+  dev:
+    type: run
+    command: "./dev.zsh"
+
   build:
     type: build 
+    command: moon run db/check db/gen compile
+  
+  compile:
+    type: build
     command: go build -o server server/cmd/server
+
+  sqlc:
+    type: run
+    command: "\"$(go env GOPATH)\"/bin/sqlc"
+
+  db/gen:
+    type: build
+    command: "moon run sqlc -- generate"
+
+  db/check:
+    type: run
+    command: "moon run sqlc -- compile"

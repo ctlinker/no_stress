@@ -1,5 +1,6 @@
 # local
 .temp
+.env
 
 # moon
 .moon/cache

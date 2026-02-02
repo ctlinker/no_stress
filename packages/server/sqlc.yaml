@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - strict_function_checks: true
+    engine: mysql
+    schema: "migrations/001_init.sql"
+    queries: "migrations/queries.sql"
+    gen:
+      go:
+        package: schema
+        out: schema
