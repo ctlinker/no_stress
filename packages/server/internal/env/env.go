@@ -7,16 +7,18 @@ import (
 )
 
 type Config struct {
-	PORT         string
-	JWT_SECRET   string
-	DATABASE_URL string
+	PORT               string
+	JWT_REFRESH_SECRET string
+	JWT_ACCESS_SECRET  string
+	DATABASE_URL       string
 }
 
 func Load() Config {
 	return Config{
-		PORT:         GetOrWarn("SERVER_PORT"),
-		JWT_SECRET:   GetOrWarn("JWT_SECRET"),
-		DATABASE_URL: GetOrWarn("DATABASE_URL"),
+		PORT:               GetOrWarn("SERVER_PORT"),
+		JWT_ACCESS_SECRET:  GetOrWarn("JWT_ACCESS_SECRET"),
+		JWT_REFRESH_SECRET: GetOrWarn("JWT_REFRESH_SECRET"),
+		DATABASE_URL:       GetOrWarn("DATABASE_URL"),
 	}
 }
 

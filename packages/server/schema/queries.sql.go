@@ -8,7 +8,26 @@ package schema
 import (
 	"context"
 	"database/sql"
+	"time"
 )
+
+const createSession = `-- name: CreateSession :execresult
+INSERT INTO session (
+  user_id, token_hash, updated_at
+) VALUES (
+  ?, ?, ?
+)
+`
+
+type CreateSessionParams struct {
+	UserID    int32
+	TokenHash string
+	UpdatedAt time.Time
+}
+
+func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createSession, arg.UserID, arg.TokenHash, arg.UpdatedAt)
+}
 
 const createUser = `-- name: CreateUser :execresult
 INSERT INTO user (
@@ -26,6 +45,26 @@ type CreateUserParams struct {
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (sql.Result, error) {
 	return q.db.ExecContext(ctx, createUser, arg.Name, arg.Email, arg.PasswordHash)
+}
+
+const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
+SELECT id, user_id, token_hash, created_at, updated_at, deleted_at FROM session
+WHERE token_hash = ? AND deleted_at IS NULL
+LIMIT 1
+`
+
+func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error) {
+	row := q.db.QueryRowContext(ctx, getSessionByTokenHash, tokenHash)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const getUser = `-- name: GetUser :one
@@ -52,6 +91,7 @@ func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
 const getUserByMail = `-- name: GetUserByMail :one
 SELECT id, name, email, password_hash, created_at, updated_at, deleted_at FROM user
 WHERE email = ?
+LIMIT 1
 `
 
 func (q *Queries) GetUserByMail(ctx context.Context, email string) (User, error) {
@@ -113,6 +153,17 @@ func (q *Queries) ShowSoftDeletedUsers(ctx context.Context) ([]User, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const softDeleteSessionByTokenHash = `-- name: SoftDeleteSessionByTokenHash :exec
+UPDATE session
+SET deleted_at = NOW()
+WHERE token_hash = ?
+`
+
+func (q *Queries) SoftDeleteSessionByTokenHash(ctx context.Context, tokenHash string) error {
+	_, err := q.db.ExecContext(ctx, softDeleteSessionByTokenHash, tokenHash)
+	return err
 }
 
 const softDeleteUser = `-- name: SoftDeleteUser :exec

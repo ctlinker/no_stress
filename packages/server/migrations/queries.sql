@@ -26,3 +26,21 @@ WHERE id = ?;
 -- name: GetUserByMail :one
 SELECT * FROM user
 WHERE email = ?
+LIMIT 1;
+
+-- name: CreateSession :execresult
+INSERT INTO session (
+  user_id, token_hash, updated_at
+) VALUES (
+  ?, ?, ?
+);
+
+-- name: GetSessionByTokenHash :one
+SELECT * FROM session
+WHERE token_hash = ? AND deleted_at IS NULL
+LIMIT 1;
+
+-- name: SoftDeleteSessionByTokenHash :exec
+UPDATE session
+SET deleted_at = NOW()
+WHERE token_hash = ?;
