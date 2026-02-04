@@ -16,5 +16,10 @@ func NewRouter(db *db.DB) *chi.Mux {
 
 	r.Get("/health", Health)
 
+	r.Route("/v1", func(r chi.Router) {
+		r.Route("/auth", func(r chi.Router) {
+			r.With(middleware.AllowContentType("application/json")).Post("/register", CreateUserHandler(db))
+		})
+	})
 	return r
 }
