@@ -16,7 +16,7 @@ tasks:
   
   compile:
     type: build
-    command: go build -o server server/cmd/server
+    command: go build -o build/server server/cmd/server
 
   sqlc:
     type: run

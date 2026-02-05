@@ -6,3 +6,5 @@
 .moon/cache
 .moon/docker
 
+# build objects
+build
