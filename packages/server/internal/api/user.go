@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"server/internal/db"
@@ -13,6 +14,7 @@ import (
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/sync/errgroup"
 )
 
 type UserRegistrationRequest struct {
@@ -83,7 +85,7 @@ func CreateUserHandler(db *db.DB) http.HandlerFunc {
 
 func UserConnectionHandler(db *db.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		reqCtx := r.Context()
 		var anon UserConnectionRequest
 
 		if err := json.NewDecoder(r.Body).Decode(&anon); err != nil {
@@ -101,7 +103,7 @@ func UserConnectionHandler(db *db.DB) http.HandlerFunc {
 			return
 		}
 
-		existingUsr, err := db.GetUserByMail(ctx, anon.Email)
+		existingUsr, err := db.GetUserByMail(reqCtx, anon.Email)
 
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -121,27 +123,43 @@ func UserConnectionHandler(db *db.DB) http.HandlerFunc {
 			return
 		}
 
-		access_tk, gen_err := jwt.GenAccessToken(env.Load().JWT_ACCESS_SECRET, existingUsr.ID)
+		var (
+			accessTk  string
+			refreshTk string
+		)
 
-		if gen_err != nil {
-			log.Printf("[v1-auth] access token gen error: %v", gen_err)
+		g, egCtx := errgroup.WithContext(reqCtx)
+
+		g.Go(func() error {
+			var err error
+			accessTk, err = jwt.GenAccessToken(env.Load().JWT_ACCESS_SECRET, existingUsr.ID)
+			if err != nil {
+				return fmt.Errorf("access token generation failed: %w", err)
+			}
+			return nil
+		})
+
+		g.Go(func() error {
+			var err error
+			refreshTk, err = jwt.GenRefreshToken(env.Load().JWT_REFRESH_SECRET, existingUsr.ID, db, egCtx)
+			if err != nil {
+				return fmt.Errorf("refresh token generation failed: %w", err)
+			}
+			return nil
+		})
+
+		if err := g.Wait(); err != nil {
+			log.Printf("[v1-auth] token gen error: %v", err)
 			http.Error(w, "Error", http.StatusInternalServerError)
 			return
 		}
 
-		data, err := json.Marshal(NewUserSession{
-			Session: access_tk,
+		jwt.SetAuthCookies(w, jwt.SessionTokens{
+			AccessToken:  accessTk,
+			RefreshToken: refreshTk,
 		})
 
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			log.Printf("[v1-auth] failed json encoding on access token : %v", gen_err)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+		w.WriteHeader(http.StatusCreated)
 	}
 }
 
