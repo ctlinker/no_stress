@@ -2,7 +2,9 @@ package jwt
 
 import (
 	"context"
-	"errors"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"server/internal/db"
 	"server/schema"
 	"time"
@@ -23,9 +25,24 @@ func GenAccessToken(access_secret string, userID int32) (string, error) {
 	return Sign(access_secret, claims)
 }
 
+func genSalt(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
 func GenRefreshToken(refresh_secret string, userID int32, db *db.DB, ctx context.Context) (string, error) {
+
+	salt, err := genSalt(16) // 16 bytes = 32 hex chars
+	if err != nil {
+		return "", fmt.Errorf("cannot generate salt: %w", err)
+	}
+
 	claims := &Claims{
 		UserID: userID,
+		Salt:   salt,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -45,7 +62,7 @@ func GenRefreshToken(refresh_secret string, userID int32, db *db.DB, ctx context
 	})
 
 	if err != nil {
-		return "", errors.New("session create failed")
+		return "", err
 	}
 
 	return token, nil
