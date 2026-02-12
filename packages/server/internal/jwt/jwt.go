@@ -14,6 +14,11 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+type DebugClaims struct {
+	Sub string `json:"sub"`
+	Exp int64  `json:"exp"`
+}
+
 var signingMethod jwt.SigningMethod = jwt.SigningMethodHS256
 
 func Sign(secret string, claims *Claims) (string, error) {
@@ -21,11 +26,11 @@ func Sign(secret string, claims *Claims) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
-func Verify(secret string, tokenStr string) (*Claims, error) {
+func VerifyJWT(secret string, tokenStr string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(
 		tokenStr,
 		&Claims{},
-		func(t *jwt.Token) (interface{}, error) {
+		func(t *jwt.Token) (any, error) {
 			return []byte(secret), nil
 		},
 	)

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"server/internal/api/middlewares"
 	"server/internal/db"
 
 	"github.com/go-chi/chi/v5"
@@ -20,6 +21,7 @@ func NewRouter(db *db.DB) *chi.Mux {
 		r.Route("/auth", func(r chi.Router) {
 			r.With(middleware.AllowContentType("application/json")).Post("/register", CreateUserHandler(db))
 			r.With(middleware.AllowContentType("application/json")).Post("/connect", UserConnectionHandler(db))
+			r.With(middlewares.WithAccessToken).Get("/check", Check)
 		})
 	})
 	return r
